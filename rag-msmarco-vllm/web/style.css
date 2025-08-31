@@ -1,0 +1,100 @@
+:root{
+    --bg:#0b0c10;
+    --panel:#12151a;
+    --muted:#7c8797;
+    --text:#e7edf5;
+    --accent:#5dd1ff;
+    --accent-2:#6ee7b7;
+    --danger:#ef4444;
+    --border: #1f2430;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 20% -10%, #12202b 0%, #0b0c10 40%, #0b0c10 100%);
+    color:var(--text);
+    font: 14px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+  }
+
+  .shell{ max-width:1180px; margin:0 auto; padding:16px; }
+  .header{ display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand h1{ margin:0; font-size:18px; font-weight:700; letter-spacing:.3px; }
+  .brand .sub{ color:var(--muted); font-size:12px; margin-left:6px; }
+  .brand .dot{ width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow:0 0 16px var(--accent); }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap:16px;
+  }
+  .panel{
+    background: linear-gradient(180deg, #131822 0%, #10131a 100%);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .panel h2{ margin:0 0 10px; font-size:14px; color:#d6e2f0; }
+  .panel h3{ margin:8px 0 6px; font-size:13px; color:#c9d6e6; }
+
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12px; color:#a7b3c4; margin-bottom:6px; }
+  .field input, .field textarea, .field select{
+    width:100%; background:#0f131a; border:1px solid var(--border); border-radius:10px;
+    padding:10px 12px; color:var(--text); outline:none;
+  }
+  .field textarea{ resize:vertical; min-height:110px; }
+  .field small{ color:var(--muted); font-size:11px; display:block; margin-top:6px; }
+  .with-toggle{ display:flex; gap:8px; align-items:center; }
+  .with-toggle input{ flex:1; }
+  .row{ display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+
+  .btn{
+    background:#19202b; color:var(--text); border:1px solid var(--border);
+    padding:8px 12px; border-radius:10px; cursor:pointer;
+  }
+  .btn:hover{ border-color:#2a3444; }
+  .btn.primary{ background:linear-gradient(135deg, #2b76ff 0%, #21b5ff 100%); border:none; color:white; }
+  .btn.danger{ background:linear-gradient(135deg, #ef4444, #f97316); border:none; color:white; }
+  .btn.ghost{ background:transparent; border:1px solid var(--border); }
+  .btn.link{ text-decoration:none; display:inline-flex; align-items:center; }
+  .btn.tiny{ padding:6px 8px; font-size:12px; }
+
+  .switch{ position:relative; display:inline-block; width:44px; height:24px; }
+  .switch input{ display:none; }
+  .slider{
+    position:absolute; cursor:pointer; inset:0; background:#2a3444; border-radius:999px; transition:.15s;
+  }
+  .slider:before{
+    content:""; position:absolute; height:18px; width:18px; left:3px; top:3px;
+    background:white; border-radius:50%; transition:.15s;
+  }
+  .switch input:checked + .slider{ background:linear-gradient(135deg, #21b5ff, #6ee7b7); }
+  .switch input:checked + .slider:before{ transform:translateX(20px); }
+
+  .samples summary{ cursor:pointer; }
+  .samples ul{ margin:8px 0 0 16px; padding:0; }
+  .samples li{ list-style: disc; color:#b9c6d8; cursor:pointer; margin:6px 0; }
+  .samples li:hover{ color:#e7edf5; text-decoration:underline; }
+
+  .status{ font-size:12px; color:#93a4ba; margin-bottom:6px; }
+  .answer{
+    white-space:pre-wrap; background:#0b0f15; border:1px solid var(--border);
+    min-height:160px; padding:16px; border-radius:10px;
+  }
+  .kv{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; color:#b9c6d8; }
+  .cites{ margin:6px 0 0 18px; }
+  .cites li{ margin:6px 0; }
+  .cites a{ color:#6ee7b7; text-decoration:none; }
+  .cites a:hover{ text-decoration:underline; }
+
+  .error{
+    margin-top:12px; border:1px solid rgba(239,68,68,.3);
+    background:rgba(239,68,68,.1); color:#fecaca; padding:10px; border-radius:10px;
+  }
+  .hidden{ display:none; }
+
+  .footer{ color:#7c8797; font-size:12px; text-align:center; margin:14px 0 28px; }

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Playground · MS MARCO × LangChain × vLLM/OpenAI</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="shell header">
+    <div class="brand">
+      <div class="dot"></div>
+      <h1>RAG Playground</h1>
+      <span class="sub">MS MARCO · LangChain · Qdrant · vLLM/OpenAI</span>
+    </div>
+    <div class="actions">
+      <button id="btn-health" class="btn ghost">Health Check</button>
+      <button id="btn-clear" class="btn ghost">Clear</button>
+      <a href="/docs" target="_blank" class="btn link">API Docs</a>
+    </div>
+  </header>
+
+  <main class="shell grid">
+    <!-- Left: Controls -->
+    <section class="panel">
+      <h2>Connection</h2>
+      <div class="field">
+        <label for="baseUrl">Base URL</label>
+        <input id="baseUrl" placeholder="(blank → same origin, e.g. /v1)" />
+        <small>Examples: <code></code> (same origin), <code>http://localhost:8000</code></small>
+      </div>
+      <div class="field">
+        <label for="token">Bearer Token</label>
+        <div class="with-toggle">
+          <input id="token" type="password" placeholder="AUTH_BEARER_TOKEN" />
+          <button id="toggleToken" class="btn tiny">👁</button>
+        </div>
+        <small>这是你自己 RAG API 的访问口令，来自项目的 <code>.env</code> 中 <code>AUTH_BEARER_TOKEN</code>。</small>
+      </div>
+
+      <h2>Query</h2>
+      <div class="field">
+        <label for="query">Your question</label>
+        <textarea id="query" rows="6" placeholder="Ask something... (Ctrl/Cmd+Enter to send)"></textarea>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="topK">Top K</label>
+          <input id="topK" type="number" min="1" max="20" value="5" />
+        </div>
+        <div class="field">
+          <label for="maxTokens">Max Output Tokens</label>
+          <input id="maxTokens" type="number" min="32" max="2048" value="300" />
+        </div>
+        <div class="field">
+          <label for="stream">Stream</label>
+          <label class="switch">
+            <input id="stream" type="checkbox" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btn-send" class="btn primary">Send</button>
+        <button id="btn-stop" class="btn danger" disabled>Stop</button>
+        <button id="btn-copy" class="btn" disabled>Copy Answer</button>
+      </div>
+
+      <details class="samples">
+        <summary>Sample questions</summary>
+        <ul id="samples">
+          <li>What is the MS MARCO dataset and how is it used?</li>
+          <li>Compare BM25 and dense retrieval in RAG.</li>
+          <li>How does Reciprocal Rank Fusion improve retrieval?</li>
+          <li>Explain the role of Qdrant in this system.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- Right: Output -->
+    <section class="panel">
+      <h2>Answer</h2>
+      <div id="status" class="status">Idle</div>
+      <pre id="answer" class="answer"></pre>
+
+      <div class="meta">
+        <div>
+          <h3>Usage &amp; Latency</h3>
+          <div id="usage" class="kv"></div>
+        </div>
+        <div>
+          <h3>Citations</h3>
+          <ol id="citations" class="cites"></ol>
+        </div>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <span>© RAG Template • Stream toggle uses chunked fetch; non-stream returns full JSON.</span>
+  </footer>
+
+  <script src="./main.js"></script>
+</body>
+</html>

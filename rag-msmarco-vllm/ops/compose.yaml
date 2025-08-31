@@ -1,0 +1,190 @@
+# Docker Compose configuration for RAG MS MARCO deployment
+# Orchestrates Qdrant, RAG API, Nginx, and optional monitoring
+
+version: '3.8'
+
+networks:
+  rag_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  qdrant_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+services:
+  # Vector database
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: rag_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC API (optional)
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=INFO
+    networks:
+      rag_network:
+        aliases:
+          - qdrant
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # RAG API service
+  rag_api:
+    build:
+      context: ..
+      dockerfile: ops/docker/Dockerfile.api
+    container_name: rag_api
+    restart: unless-stopped
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    environment:
+      # Load from .env file
+      - QDRANT_URL=http://qdrant:6333
+      - OPENAI_API_BASE=http://nginx:8080/llm/v1
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-2}
+    env_file:
+      - ../.env
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      rag_network:
+        aliases:
+          - rag_api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  # Nginx reverse proxy and load balancer
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: rag_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../logs/nginx:/var/log/nginx
+    depends_on:
+      rag_api:
+        condition: service_healthy
+    networks:
+      rag_network:
+        aliases:
+          - nginx
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/nginx/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: rag_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      rag_network:
+        aliases:
+          - prometheus
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: rag_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_DOMAIN=${GRAFANA_DOMAIN:-localhost}
+    depends_on:
+      - prometheus
+    networks:
+      rag_network:
+        aliases:
+          - grafana
+    profiles:
+      - monitoring
+
+  # Optional: Load testing with custom Python script
+  load_test:
+    build:
+      context: ..
+      dockerfile: ops/docker/Dockerfile.api
+    container_name: rag_load_test
+    entrypoint: ["python", "tools/load_test.py"]
+    command: 
+      - "--url=http://nginx:8080"
+      - "--token=${AUTH_BEARER_TOKEN}"
+      - "--users=5"
+      - "--requests=10"
+    depends_on:
+      nginx:
+        condition: service_healthy
+    environment:
+      - PYTHONPATH=/app
+    networks:
+      rag_network:
+    profiles:
+      - testing
+
+# External vLLM servers configuration (documentation)
+# You need to run these separately or on different hosts:
+#
+# vLLM Server A:
+# docker run --gpus all -p 8001:8000 \
+#   -v ~/.cache/huggingface:/root/.cache/huggingface \
+#   vllm/vllm-openai:latest \
+#   --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+#   --served-model-name meta-llama/Meta-Llama-3.1-8B-Instruct \
+#   --host 0.0.0.0 --port 8000
+#
+# vLLM Server B:
+# docker run --gpus all -p 8002:8000 \
+#   -v ~/.cache/huggingface:/root/.cache/huggingface \
+#   vllm/vllm-openai:latest \
+#   --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+#   --served-model-name meta-llama/Meta-Llama-3.1-8B-Instruct \
+#   --host 0.0.0.0 --port 8000
+#
+# Update nginx.conf to point to your vLLM server IPs/hostnames

@@ -1,0 +1,11 @@
+# Dockerfile for k6 load testing
+FROM grafana/k6:latest
+
+# Copy k6 scripts
+COPY k6/ /scripts/
+
+# Set working directory
+WORKDIR /scripts
+
+# Default command
+CMD ["run", "load_test.js"]
