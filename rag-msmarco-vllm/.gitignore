@@ -1,0 +1,62 @@
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.direnv/
+
+# Environment files and secrets
+.env
+.env.local
+.env.*
+!.env.example
+
+# Logs and temp files
+logs/
+**/logs/
+*.log
+*.log.*
+*.tmp
+*.temp
+
+# Data and generated outputs
+data/
+**/data/
+build_manifest.json
+evaluation_results*
+full_evaluation_results*
+*loadtest_results.json
+*stress_test_results.json
+*_results.json
+qdrant_backup_*.tar.gz
+
+# Node/Web artifacts (if used)
+node_modules/
+web/node_modules/
+web/.cache/
+web/dist/
+
+# IDE/editor/system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker/compose local artifacts (if created)
+docker-compose.override.yml
+.docker/

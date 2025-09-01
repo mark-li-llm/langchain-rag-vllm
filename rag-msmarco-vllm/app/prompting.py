@@ -56,7 +56,7 @@ Please answer the question using only the information from the context above, in
 
 
 def format_context_with_citations(
-    docs: List[Document], 
+    docs: List[Document],
     max_context_tokens: int = 3000,
     chars_per_token: float = 4.0
 ) -> tuple[str, List[Dict[str, Any]]]:
@@ -78,13 +78,58 @@ def format_context_with_citations(
     formatted_chunks = []
     citations = []
     total_chars = 0
-    
+
+    def _get(meta: Dict[str, Any], *path: str) -> Optional[Any]:
+        cur: Any = meta
+        for key in path:
+            if not isinstance(cur, dict) or key not in cur:
+                return None
+            cur = cur[key]
+        return cur
+
+    def _doc_id_from_source(meta: Dict[str, Any]) -> Optional[str]:
+        # Try convert source like msmarco:v2.1:<qid>:<idx> -> msmarco_<qid>_<idx>
+        src = meta.get("source") or _get(meta, "metadata", "source") or _get(meta, "payload", "source")
+        if isinstance(src, str) and src.startswith("msmarco:"):
+            parts = src.split(":")
+            if len(parts) >= 4 and parts[-2].isdigit():
+                return f"msmarco_{parts[-2]}_{parts[-1]}"
+        return None
+
     for i, doc in enumerate(docs, 1):
-        # Extract metadata for citation
-        doc_id = doc.metadata.get("doc_id") or doc.metadata.get("metadata", {}).get("doc_id", f"doc_{i}")
-        chunk_id = doc.metadata.get("chunk_id") or doc.metadata.get("metadata", {}).get("chunk_id", f"{doc_id}:chunk:{i}")
-        source = doc.metadata.get("source", "")
-        url = doc.metadata.get("url", "")
+        # Extract metadata for citation with robust fallbacks
+        m = doc.metadata or {}
+
+        doc_id = (
+            m.get("doc_id")
+            or _get(m, "metadata", "doc_id")
+            or _get(m, "payload", "doc_id")
+            or _doc_id_from_source(m)
+            or f"doc_{i}"
+        )
+
+        chunk_id = (
+            m.get("chunk_id")
+            or m.get("chunk_id_str")
+            or _get(m, "metadata", "chunk_id")
+            or _get(m, "payload", "chunk_id")
+            or m.get("id")
+            or f"{doc_id}:chunk:{i}"
+        )
+
+        source = (
+            m.get("source")
+            or _get(m, "metadata", "source")
+            or _get(m, "payload", "source")
+            or ""
+        )
+
+        url = (
+            m.get("url")
+            or _get(m, "metadata", "url")
+            or _get(m, "payload", "url")
+            or ""
+        )
         
         # Create citation entry
         citation = {
@@ -93,7 +138,9 @@ def format_context_with_citations(
             "chunk_id": chunk_id,
             "source": source,
             "url": url if url else None,
-            "score": doc.metadata.get("score", None)
+            "score": m.get("score", None),
+            # Help UIs: include a small preview regardless of format_citations path
+            "preview": (doc.page_content[:100] + ("..." if len(doc.page_content) > 100 else "")) if doc.page_content else None,
         }
         citations.append(citation)
         
@@ -121,7 +168,7 @@ def format_context_with_citations(
                 pass
         elif source:
             header += f" Source: {source}"
-        
+
         chunk_text = f"{header}\n{content}\n"
         formatted_chunks.append(chunk_text)
         

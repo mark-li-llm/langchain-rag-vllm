@@ -199,7 +199,7 @@ def as_retriever(
     k: int = 5,
     score_threshold: Optional[float] = None
 ) -> BaseRetriever:
-    """Create a LangChain retriever from Qdrant collection.
+    """Create a retriever from Qdrant collection.
     
     Args:
         client: Qdrant client instance
@@ -211,21 +211,45 @@ def as_retriever(
     Returns:
         Configured BaseRetriever instance
     """
-    # Create Qdrant vector store wrapper
-    vector_store = Qdrant(
+    # Prefer a custom dense retriever via qdrant-client to ensure full payload
+    # (doc_id, chunk_id, source, url, etc.) is preserved as metadata across versions.
+    class DenseQdrantRetriever(BaseRetriever):
+        client: QdrantClient
+        collection_name: str
+        embeddings: Embeddings
+        k: int = 5
+        score_threshold: Optional[float] = None
+
+        def _get_relevant_documents(self, query: str, *, run_manager=None) -> List[Document]:
+            qvec = self.embeddings.embed_query(query)
+            res = self.client.search(
+                collection_name=self.collection_name,
+                query_vector=qvec,
+                limit=self.k,
+                with_payload=True,
+                with_vectors=False,
+                score_threshold=self.score_threshold,
+            )
+            docs: List[Document] = []
+            for sp in res:
+                payload = sp.payload or {}
+                text = payload.get("page_content") or payload.get("text") or ""
+                meta = {**payload}
+                # include score for downstream
+                try:
+                    meta["score"] = getattr(sp, "score", None)
+                except Exception:
+                    pass
+                docs.append(Document(page_content=text, metadata=meta))
+            return docs
+
+    return DenseQdrantRetriever(
         client=client,
         collection_name=collection_name,
         embeddings=embeddings,
-        content_payload_key="page_content"
+        k=k,
+        score_threshold=score_threshold,
     )
-    
-    # Configure search parameters
-    search_kwargs = {"k": k}
-    if score_threshold is not None:
-        search_kwargs["score_threshold"] = score_threshold
-    
-    # Return as retriever
-    return vector_store.as_retriever(search_kwargs=search_kwargs)
 
 
 def get_collection_info(client: QdrantClient, collection_name: str) -> Dict[str, Any]:

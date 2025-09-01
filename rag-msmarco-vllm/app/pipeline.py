@@ -83,17 +83,39 @@ def build_rag_chain(
         llm_response = data["llm_response"]
         citations = data["citations"]
         docs = data["docs"]
-        
+
         # Extract text content from response
         if hasattr(llm_response, 'content'):
             response_text = llm_response.content
         else:
             response_text = str(llm_response)
-        
+
         # Validate citations in response
         citation_validation = validate_citations_in_response(
             response_text, len(citations)
         )
+        # Add warnings if placeholder-style IDs were used in citations
+        try:
+            import re
+            placeholder_numbers = []
+            for c in citations:
+                did = str(c.get("doc_id", ""))
+                cid = str(c.get("chunk_id", ""))
+                if re.fullmatch(r"doc_\d+", did) or re.fullmatch(r"doc_\d+:chunk:\d+", cid):
+                    # Prefer the assigned citation number, fallback to positional index
+                    num = c.get("number")
+                    if isinstance(num, int):
+                        placeholder_numbers.append(num)
+                    else:
+                        placeholder_numbers.append(len(placeholder_numbers) + 1)
+            if placeholder_numbers:
+                msgs = [
+                    f"placeholder ids used for citations: {placeholder_numbers}"
+                ]
+                citation_validation["warnings"] = msgs
+        except Exception:
+            # Do not fail response construction if warnings computation errs
+            pass
         
         # Calculate token usage (rough estimation)
         prompt_tokens = len(data.get("context", "")) // 4  # Rough estimate

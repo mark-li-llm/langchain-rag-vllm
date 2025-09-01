@@ -169,8 +169,14 @@ def build_retrieval_pipeline(
     # If BM25 not requested, return dense-only
     if not use_bm25:
         print("Using dense-only retrieval")
-        # Adjust dense retriever to return final_k documents
-        dense_retriever.search_kwargs["k"] = final_k
+        # Adjust dense retriever to return final_k documents if supported
+        if hasattr(dense_retriever, "search_kwargs") and isinstance(dense_retriever.search_kwargs, dict):
+            dense_retriever.search_kwargs["k"] = final_k
+        elif hasattr(dense_retriever, "k"):
+            try:
+                setattr(dense_retriever, "k", final_k)
+            except Exception:
+                pass
         return dense_retriever
     
     # Build BM25 retriever
