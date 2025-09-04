@@ -74,7 +74,7 @@ def get_llm(
     }
     print(f"--> ChatOpenAI params: {final_params}")
 
-    # --------- 创建客户端 ----------
+
     llm = ChatOpenAI(**final_params)
     return llm
 

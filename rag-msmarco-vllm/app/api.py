@@ -45,6 +45,10 @@ from .schemas import (
     TraceResponse,
 )
 from .timing import TimingCollector
+import logging
+from starlette.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -66,12 +70,13 @@ app.add_middleware(
 
 # Mount static files for web interface
 import os
+from pathlib import Path
 
-# Use absolute path to web directory
-web_dir = "/Users/liyunxiao/rag-msmarco-vllm/web"
+# Resolve the web directory relative to this file (repo_root/web)
+web_dir = (Path(__file__).resolve().parent.parent / "web")
 print(f"Mounting web directory: {web_dir}")  # Debug info
-if os.path.exists(web_dir):
-    app.mount("/static", StaticFiles(directory=web_dir), name="static")
+if web_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
     print("✅ Web static files mounted successfully")
 else:
     print(f"❌ Web directory not found at: {web_dir}")
@@ -155,19 +160,46 @@ async def startup_event():
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    """Add timing and trace ID headers to responses."""
-    # Generate trace ID for request
+    """
+    Attach a human-friendly processing time and a trace ID to every response.
+
+    - Uses time.perf_counter() for high-resolution timing.
+    - Formats duration smartly: <1s in milliseconds; otherwise in seconds.
+    - Ensures headers are added for both success and error responses.
+    """
+
+    def _format_duration(seconds: float) -> str:
+        """Return 'XX.XX ms' if <1s, else 'X.XX s'."""
+        return f"{seconds * 1000:.2f} ms" if seconds < 1 else f"{seconds:.2f} s"
+
     trace_id = generate_trace_id()
     request.state.trace_id = trace_id
-    
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    
-    response.headers["X-Process-Time"] = str(process_time)
-    response.headers["X-Trace-ID"] = trace_id
-    
-    return response
+
+    t0 = time.perf_counter()
+    response = None  # Will be set in try/except; mutated in finally
+
+    try:
+        # Proceed with request handling
+        response = await call_next(request)
+        return response
+    except Exception:
+        # Log the exception with the trace ID for correlation
+        logger.exception("Unhandled error, trace_id=%s", trace_id)
+
+        # Build an error response; headers will be set in 'finally'
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error", "trace_id": trace_id},
+        )
+        return response
+    finally:
+        # Compute elapsed time and attach headers to the response (success or error)
+        elapsed = time.perf_counter() - t0
+        if response is not None:
+            response.headers["X-Trace-ID"] = trace_id
+            response.headers["X-Process-Time"] = _format_duration(elapsed)
+            # Optional: also expose a Server-Timing header for browser devtools
+            # response.headers["Server-Timing"] = f'app;dur={elapsed * 1000:.2f}'
 
 
 @app.post("/v1/query", response_model=QueryResponse)
