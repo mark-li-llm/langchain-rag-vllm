@@ -1,6 +1,6 @@
-# RAG MS MARCO Template with vLLM Integration
+# LangChain RAG Service (FastAPI, vLLM, Qdrant, Nginx)
 
-A production-ready Retrieval-Augmented Generation (RAG) system using the MS MARCO dataset, Qdrant vector database, and vLLM for local LLM serving. Built with LangChain for robust document processing and retrieval.
+Production-ready Retrieval-Augmented Generation (RAG) service powered by LangChain and vLLM for local LLM serving — FastAPI microservice with Nginx load balancing, Qdrant vector store, and Docker Compose.
 
 ## 🎯 Overview
 
@@ -217,17 +217,25 @@ Performance:
 │   ├── api.py              # FastAPI application
 │   ├── pipeline.py         # LCEL RAG chain
 │   ├── retrieval.py        # Dense + BM25 + Ensemble
+│   ├── prompting.py        # Prompt templates & citation utils
+│   ├── llm.py              # vLLM/OpenAI client config
 │   ├── eval_msmarco.py     # Evaluation framework
 │   └── ...
 ├── tools/                  # CLI utilities
 │   ├── build_index.py      # Index builder
-│   ├── evaluate.py         # Evaluation runner  
+│   ├── evaluate.py         # Evaluation runner
 │   └── load_test.py        # Load testing
 ├── ops/                    # Infrastructure
 │   ├── nginx.conf          # Load balancer config
 │   ├── compose.yaml        # Service orchestration
 │   └── docker/             # Container definitions
-└── configs/                # Configuration templates
+├── configs/                # Configuration templates (e.g., .env.example)
+├── web/                    # Static web UI (served at /static)
+├── tests/                  # Pytest suite
+├── Makefile                # Developer commands
+├── requirements.txt        # Python dependencies
+├── AGENTS.md               # Repository guidelines
+└── README.md               # Project documentation
 ```
 
 ### Key LangChain Components
@@ -259,27 +267,6 @@ Content-Type: application/json
   "query": "What is machine learning?",
   "top_k": 5,
   "stream": true
-}
-```
-
-Response:
-```json
-{
-  "answer": "Machine learning is a subset of artificial intelligence [1] that enables computers to learn patterns from data [2].",
-  "citations": [
-    {
-      "number": 1,
-      "doc_id": "doc_123",
-      "source": "msmarco:v2.1:123:0", 
-      "url": "https://example.com/ml-intro",
-      "score": 0.89
-    }
-  ],
-  "metadata": {
-    "retrieval_count": 5,
-    "total_time_ms": 245.67
-  },
-  "trace_id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 }
 ```
 
